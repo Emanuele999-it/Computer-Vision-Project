@@ -1,8 +1,10 @@
 # Computer-Vision-Project
 Computer Vision course project - DEI department - UniPd <br />
 
-command list: <br />
-  mkdir build && cd build <br />
-  cmake .. <br />
-  cmake --build . <br />
-  ./CVProject ../images/*insert one image name*
+<h3>command list:</h3>
+  <ul>
+    <li>mkdir build && cd build </li>
+    <li>cmake .. </li>
+    <li>cmake --build . </li>
+    <li>./CVProject ../images/*insert one image name*</li>
+ </ul>

@@ -1,12 +1,10 @@
 #include "imageProcessing.h"
+#include "customHoughDetector.h"
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/calib3d.hpp>
 
-
-// remove
-#include "MeanShift.h"
 
 using cv::Mat;
 using std::vector;
@@ -25,14 +23,15 @@ void imageProcessing::startprocess(){
 
 
 Mat imageProcessing::fieldSegmentation(){
-
-    displayMat(input_image_, "input image");
+/*
+    displayMat(input_image_, "input image",1);
 
     // FIRST TRY
 
     // Reduce noise to input image + maintain edges
     Mat filtered_image_;
-    cv::bilateralFilter(input_image_,filtered_image_,21,3,3);
+    //cv::bilateralFilter(input_image_,filtered_image_,21,3,3);
+    cv::GaussianBlur(input_image_,filtered_image_, cv::Size(7,7),10,10);
 
     // Find edges
     Mat cannyOut;
@@ -53,69 +52,55 @@ Mat imageProcessing::fieldSegmentation(){
 
     displayMat(drawing, "drawing");
     return cannyOut;
+*/
 
+    /*
+        // THIRD TRY
 
-/*
-    // SECOND TRY
+        // Reduce noise to input image + maintain edges
+        Mat filtered_image_;
+        int edgeSize = 3;
+        //cv::GaussianBlur(input_image_,filtered_image_, cv::Size(edgeSize,edgeSize),10,10);
+        cv::bilateralFilter(input_image_,filtered_image_,edgeSize,10,10);
 
+        // Reshape the image to a 2D matrix of pixels (rows × columns, 3 color channels)
+        Mat reshapedImage = filtered_image_.reshape(1, filtered_image_.rows * filtered_image_.cols);
 
-    cvtColor(input_image_, input_image_, COLOR_RGB2Lab);
+        // Convert the image to float for k-means clustering
+        reshapedImage.convertTo(reshapedImage, CV_32F);
 
-    MeanShift MSProc(8, 16);
-    // MSProc.MSFiltering(image);
-    // Segmentation Process include Filtering Process (Region Growing)
-    MSProc.MSSegmentation(input_image_);
+        // Number of clusters for k-means
+        int numClusters = 2;
 
-    cout << "\nthe Spatial Bandwith is " << MSProc.hs;
-    cout << "\nthe Color Bandwith is " << MSProc.hr;
+        // Criteria for k-means algorithm
+        TermCriteria criteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 1.0);
 
-    cvtColor(input_image_, input_image_, COLOR_Lab2RGB);
+        // K-means clustering
+        Mat labels, centers;
+        kmeans(reshapedImage, numClusters, labels, criteria, numClusters, KMEANS_PP_CENTERS, centers);
 
-    displayMat(input_image_);
+        // Convert the cluster centers to 8-bit unsigned integers
+        centers.convertTo(centers, CV_8U);
+
+        // Map labels to colors and create segmented image
+        Mat segmented = Mat::zeros(input_image_.size(), input_image_.type());
+        for (int i = 0; i < input_image_.rows; ++i) {
+            for (int j = 0; j < input_image_.cols; ++j) {
+                int label = labels.at<int>(i * input_image_.cols + j);
+                segmented.at<Vec3b>(i, j) = centers.at<Vec3b>(label);
+            }
+        }
+
+        displayMat(segmented);
+
+        return segmented;
+    */
+
+    // FOURTH TRY
+
+    customHoughDetector HougDet(input_image_);
+
+    HougDet.startprocess();
 
     return input_image_;
-*/
-
-
-/*
-    // THIRD TRY
-
-    // Reduce noise to input image + maintain edges
-    Mat filtered_image_;
-    int edgeSize = 3;
-    //cv::GaussianBlur(input_image_,filtered_image_, cv::Size(edgeSize,edgeSize),10,10);
-    cv::bilateralFilter(input_image_,filtered_image_,edgeSize,10,10);
-
-    // Reshape the image to a 2D matrix of pixels (rows × columns, 3 color channels)
-    Mat reshapedImage = filtered_image_.reshape(1, filtered_image_.rows * filtered_image_.cols);
-    
-    // Convert the image to float for k-means clustering
-    reshapedImage.convertTo(reshapedImage, CV_32F);
-
-    // Number of clusters for k-means
-    int numClusters = 2;
-
-    // Criteria for k-means algorithm
-    TermCriteria criteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 1.0);
-
-    // K-means clustering
-    Mat labels, centers;
-    kmeans(reshapedImage, numClusters, labels, criteria, numClusters, KMEANS_PP_CENTERS, centers);
-
-    // Convert the cluster centers to 8-bit unsigned integers
-    centers.convertTo(centers, CV_8U);
-
-    // Map labels to colors and create segmented image
-    Mat segmented = Mat::zeros(input_image_.size(), input_image_.type());
-    for (int i = 0; i < input_image_.rows; ++i) {
-        for (int j = 0; j < input_image_.cols; ++j) {
-            int label = labels.at<int>(i * input_image_.cols + j);
-            segmented.at<Vec3b>(i, j) = centers.at<Vec3b>(label);
-        }
-    }
-
-    displayMat(segmented);
-
-    return segmented;
-*/
 }

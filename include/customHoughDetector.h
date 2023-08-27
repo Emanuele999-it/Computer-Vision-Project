@@ -14,7 +14,8 @@ class customHoughDetector{
     public:
         customHoughDetector(cv::Mat input_image);
         void startprocess();
-        cv::Mat colorSoppression(cv::Mat img);
+        cv::Mat colorSuppression(cv::Mat img);
+        cv::Mat houg(cv::Mat img);
 };
 
 #endif // CUSTOM_HOUGH_DETECTOR_H

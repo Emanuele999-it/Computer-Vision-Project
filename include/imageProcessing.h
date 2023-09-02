@@ -13,9 +13,6 @@ class imageProcessing{
     public:
         imageProcessing(cv::Mat input_image);
         void startprocess();
-        
-        cv::Mat fieldSegmentation();
-
 };
 
 #endif

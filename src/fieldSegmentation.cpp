@@ -10,108 +10,35 @@ void fieldSegmentation::startprocess()
 {
     // Reduce noise to input image + maintain edges
     cv::Mat resultBilateral, resultGaussian;
-    cv::bilateralFilter(input_image_,resultBilateral,31,21,21);
-    cv::GaussianBlur(resultBilateral,resultGaussian, cv::Size(3,3),3,3);
-
+    cv::bilateralFilter(input_image_,resultBilateral,11,15,15);
+    cv::GaussianBlur(resultBilateral,resultGaussian, cv::Size(5,5),3,3);
 
     cv::Mat colorSuppressed = colorSuppression(resultGaussian, 3);
-
 
     displayMat(input_image_, "input image", 1);
     displayMat(colorSuppressed, "quantized_image",1);
 
     Mat mfc = mostFrequentColorFiltering(colorSuppressed);
 
-    displayMat(mfc, "mostFreqColor");
+    displayMat(mfc, "mostFreqColor",1);
 
-    mask_ = maskGeneration(mfc); 
+    noiseReduction(mfc);
 
-
-    // Perform operations needed for watershed
-	preProcess();
-
-    watershed(resultBilateral, markers_image_);
-
-    postProcess();
-
-
-    displayMat(result_img_, "result");
+    displayMat(result_image_, "risultato");
 }
 
+// -----------------------------------------------------------------------------
+/*
 
-void fieldSegmentation::preProcess(){
-    // Distance transform
-    Mat dist_image;
-    cv::distanceTransform(mask_, dist_image, cv::DIST_L2, 3);
+        Alternatives for solving the filed segmentation problems:
+            1 - compare the result with the original image to understand if the region is the same
+            2 - if a black shape is surrounded by green shapes (all 4 sides) -> connect
+            3 - merge result with different color suppressed images
+            4 - dilate / erode to connect dark areas
 
+*/
+// -----------------------------------------------------------------------------
 
-    // Image normalization
-    Mat normalized_image;
-    const double kLowNorm = 0;
-    const double kHighNorm = 1.0;
-    normalize(dist_image, normalized_image, kLowNorm, kHighNorm, cv::NORM_MINMAX);
-
-
-    // Threshold to obtain the markers for waterhseed methods
-    Mat thresholded_image;
-    const double kLowTresholdNorm = 0.1;
-    const double kHighThresholdNorm = 1.0;
-	threshold(normalized_image, thresholded_image, kLowTresholdNorm, kHighThresholdNorm, cv::THRESH_BINARY);
-    
-
-    // FindContours image needs the CV_8U version of the distance image
-	Mat dist_image_8u;
-	thresholded_image.convertTo(dist_image_8u, CV_8U);
-
-
-	// Find the markers
-    contours_vec_;
-	findContours(dist_image_8u, contours_vec_, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
-
-	// Create the markers image for the watershed method
-	markers_image_ = Mat::zeros(thresholded_image.size(), CV_32S);
-	for (size_t i = 0; i < contours_vec_.size(); i++)
-	{
-		drawContours(markers_image_, contours_vec_, static_cast<int>(i), cv::Scalar(static_cast<int>(i)+1), -1);
-	}
-}
-
-
-
-void fieldSegmentation::postProcess(){
-    //Post-processing 
-    Mat markers;
-	markers_image_.convertTo(markers, CV_8U);
-	bitwise_not(markers, markers);
-
-    // Generate colors
-	std::vector<cv::Vec3b> color_tab;
-	for (size_t i = 0; i < contours_vec_.size(); i++)
-	{
-		int b = cv::theRNG().uniform(0, 255);
-		int g = cv::theRNG().uniform(0, 255);
-		int r = cv::theRNG().uniform(0, 255);
-		color_tab.push_back(cv::Vec3b((uchar)b, (uchar)g, (uchar)r));
-	}
-
-	// Create the output image
-	result_img_ = Mat::zeros(markers_image_.size(), CV_8UC3);
-
-	// Fill labeled objects with random colors
-	// Fill labeled objects with random colors
-	for (int i = 0; i < markers_image_.rows; i++)
-	{
-		for (int j = 0; j < markers_image_.cols; j++)
-		{
-			int index = markers_image_.at<int>(i,j);
-			if (index > 0 && index <= static_cast<int>(contours_vec_.size()))
-			{
-				result_img_.at<cv::Vec3b>(i,j) = color_tab[index-1];
-			}
-		}
-	}
-}
 
 
 // allow to reduce the number of colors
@@ -181,7 +108,14 @@ cv::Mat fieldSegmentation::mostFrequentColorFiltering(const cv::Mat img){
     std::unordered_map<cv::Vec3b, int, Vec3bHash, Vec3bEqual> colorFreq;
     for (int i = 0; i < reshaped.rows; ++i) {
         cv::Vec3b pixel = reshaped.at<cv::Vec3b>(i, 0);
-        colorFreq[pixel]++;
+
+        // Calculate the sum of color channels (R+G+B)
+        int colorSum = pixel[0] + pixel[1] + pixel[2];
+
+        // Skip colors that are too dark based on the thresholdSum
+        if (colorSum >= 50) {
+            colorFreq[pixel]++;
+        }
     }
 
     // Find the most frequent color
@@ -194,15 +128,83 @@ cv::Mat fieldSegmentation::mostFrequentColorFiltering(const cv::Mat img){
         }
     }
 
-    // Create an output image with only the most frequent color
+    cv::Vec3b desiredColor(0, 255, 0);
+
+    // Create an output image with only the regions with the most frequent color
     Mat output = Mat::zeros(img.size(), img.type());
     for (int i = 0; i < output.rows; ++i) {
         for (int j = 0; j < output.cols; ++j) {
             if (img.at<cv::Vec3b>(i, j) == mostFrequentColor) {
-                output.at<cv::Vec3b>(i, j) = mostFrequentColor;
+                output.at<cv::Vec3b>(i, j) = desiredColor;
             }
         }
     }
 
     return output;
+}
+
+
+void fieldSegmentation::noiseReduction(cv::Mat img){
+    // Convert the image to HSV color space
+    Mat hsv;
+    cvtColor(img, hsv, cv::COLOR_BGR2HSV);
+
+    // Define the range of green color in HSV
+    cv::Scalar lower_green(35, 50, 50); // Adjust these values as needed
+    cv::Scalar upper_green(85, 255, 255); // Adjust these values as needed
+
+    // Create a mask to identify green regions
+    Mat green_mask;
+    inRange(hsv, lower_green, upper_green, green_mask);
+
+    // Find connected components (blobs) in the green regions
+    std::vector<std::vector<cv::Point>> contours;
+    findContours(green_mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    // Find the main green region by selecting the largest blob
+    double maxArea = 0;
+    int mainGreenIdx = -1;
+
+    for (size_t i = 0; i < contours.size(); i++) {
+        double area = contourArea(contours[i]);
+        if (area > maxArea) {
+            maxArea = area;
+            mainGreenIdx = static_cast<int>(i);
+        }
+    }
+
+    // Create a new mask to combine the main green region and nearby blobs
+    Mat result_mask = Mat::zeros(img.size(), CV_8U);
+
+    for (size_t i = 0; i < contours.size(); i++) {
+        if (i == mainGreenIdx) {
+            // Include the main green region
+            drawContours(result_mask, contours, i, cv::Scalar(255), cv::FILLED);
+        } else {
+            // Calculate the distance between the current blob and the main green region
+            double distance = matchShapes(contours[mainGreenIdx], contours[i], cv::CONTOURS_MATCH_I2, 0);
+
+            // If the distance is below a threshold, include the blob
+            if (distance < 2) {
+                drawContours(result_mask, contours, i, cv::Scalar(255), cv::FILLED);
+            }
+        }
+    }
+
+    // Apply the mask to the original image to suppress unwanted green regions
+    Mat result;
+    img.copyTo(result, result_mask);
+
+    result_image_ = result;
+}
+
+
+cv::Mat fieldSegmentation::returnInputImage() const {
+    cv::Mat temp = input_image_.clone();
+    return temp;
+}
+
+cv::Mat fieldSegmentation::returnResultImage() const {
+    cv::Mat temp = result_image_.clone();
+    return temp;
 }

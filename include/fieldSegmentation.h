@@ -14,7 +14,7 @@ class fieldSegmentation{
 
         cv::Mat colorSuppression(cv::Mat img, int k); 
         cv::Mat maskGeneration(cv::Mat img);
-        cv::Mat mostFrequentColorFiltering(const cv::Mat img);
+        cv::Mat mostFrequentColorFiltering(const cv::Mat img, const cv::Mat blurred);
         void noiseReduction(cv:: Mat img);
 
     public:

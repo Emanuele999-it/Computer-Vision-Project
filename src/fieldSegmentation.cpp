@@ -13,13 +13,15 @@ void fieldSegmentation::startprocess()
     cv::bilateralFilter(input_image_,resultBilateral,11,15,15);
     cv::GaussianBlur(resultBilateral,resultGaussian, cv::Size(5,5),3,3);
 
+    displayMat(resultGaussian, "gaussian res", 1);
+
     // clusterize by similar colors
-    cv::Mat colorSuppressed = colorSuppression(resultGaussian, 3);
+    cv::Mat colorSuppressed = colorSuppression(resultGaussian, 4);
 
     displayMat(input_image_, "input image", 1);
     displayMat(colorSuppressed, "quantized_image",1);
 
-    Mat mfc = mostFrequentColorFiltering(colorSuppressed);
+    Mat mfc = mostFrequentColorFiltering(colorSuppressed, resultGaussian);
 
     displayMat(mfc, "mostFreqColor",1);
 
@@ -36,6 +38,7 @@ void fieldSegmentation::startprocess()
             2 - if a black shape is surrounded by green shapes (all 4 sides) -> connect
             3 - merge result with different color suppressed images
             4 - dilate / erode to connect dark areas
+            5 - kmean 8 e verifica cluster ???
 
 */
 // -----------------------------------------------------------------------------
@@ -101,7 +104,7 @@ Mat fieldSegmentation::maskGeneration(Mat img){
 
 
 
-cv::Mat fieldSegmentation::mostFrequentColorFiltering(const cv::Mat img){
+cv::Mat fieldSegmentation::mostFrequentColorFiltering(const cv::Mat img, const cv::Mat blurred){
     // Reshape the image to a list of pixels
     Mat reshaped = img.reshape(1, img.rows * img.cols);
 
@@ -133,15 +136,27 @@ cv::Mat fieldSegmentation::mostFrequentColorFiltering(const cv::Mat img){
 
     // Create an output image with only the regions with the most frequent color
     Mat output = Mat::zeros(img.size(), img.type());
-    double tolerance = 80;
+    double tolerance = 70;
     for (int i = 0; i < output.rows; ++i) {
         for (int j = 0; j < output.cols; ++j) {
-            if (cv::norm(img.at<cv::Vec3b>(i, j), mostFrequentColor) <= tolerance ) {
-                output.at<cv::Vec3b>(i, j) = desiredColor;
+
+            cv::Vec3b pixel_img = img.at<cv::Vec3b>(i, j);
+            cv::Vec3b pixel_blurred = blurred.at<cv::Vec3b>(i, j);
+
+            if(cv::norm(img.at<cv::Vec3b>(i, j), mostFrequentColor) <= tolerance) {
+                output.at<cv::Vec3b>(i,j) = desiredColor;
             }
+            /*
+            else{
+                // giocare con variazione colori per ottenere risultati buoni per immagine 2 e 8 
+                double pixel_difference = cv::norm(pixel_blurred, pixel_img);
+                if (pixel_difference <= tolerance){
+                        output.at<cv::Vec3b>(i,j) = desiredColor;
+                }
+            }
+            */
         }
     }
-
     return output;
 }
 
@@ -158,9 +173,8 @@ void fieldSegmentation::noiseReduction(cv::Mat img){
     cv::split(img, channels); // Split the image into B, G, and R channels
 
     for (int i = 0; i < 3; ++i) {
-        //cv::morphologyEx(channels[i], channels[i], cv::MORPH_CLOSE, kernel);
-        cv::erode(channels[i], channels[i], cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)), cv::Point(-1,-1), 3);
-
+        cv::morphologyEx(channels[i], channels[i], cv::MORPH_CLOSE, kernel);
+        //cv::erode(channels[i], channels[i], cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)), cv::Point(-1,-1), 1);
     }
 
     // Merge the channels back into a 3-channel image
@@ -200,12 +214,13 @@ void fieldSegmentation::noiseReduction(cv::Mat img){
         if (i == mainGreenIdx) {
             // Include the main green region
             drawContours(result_mask, contours, i, cv::Scalar(255), cv::FILLED);
-        } else {
+        } 
+        else {
             // Calculate the distance between the current blob and the main green region
             double distance = matchShapes(contours[mainGreenIdx], contours[i], cv::CONTOURS_MATCH_I2, 0);
 
             // If the distance is below a threshold, include the blob
-            if (distance < 3.95) {
+            if (distance < 2.7) {
                 drawContours(result_mask, contours, i, cv::Scalar(255), cv::FILLED);
             }
         }

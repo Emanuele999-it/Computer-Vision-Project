@@ -8,11 +8,12 @@ fieldSegmentation::fieldSegmentation(cv::Mat input_image){
 
 void fieldSegmentation::startprocess()
 {
-    // Reduce noise to input image + maintain edges
+    // Reduce noise to input image
     cv::Mat resultBilateral, resultGaussian;
     cv::bilateralFilter(input_image_,resultBilateral,11,15,15);
     cv::GaussianBlur(resultBilateral,resultGaussian, cv::Size(5,5),3,3);
 
+    // clusterize by similar colors
     cv::Mat colorSuppressed = colorSuppression(resultGaussian, 3);
 
     displayMat(input_image_, "input image", 1);
@@ -113,7 +114,7 @@ cv::Mat fieldSegmentation::mostFrequentColorFiltering(const cv::Mat img){
         int colorSum = pixel[0] + pixel[1] + pixel[2];
 
         // Skip colors that are too dark based on the thresholdSum
-        if (colorSum >= 50) {
+        if (colorSum >= 60) {
             colorFreq[pixel]++;
         }
     }
@@ -132,9 +133,10 @@ cv::Mat fieldSegmentation::mostFrequentColorFiltering(const cv::Mat img){
 
     // Create an output image with only the regions with the most frequent color
     Mat output = Mat::zeros(img.size(), img.type());
+    double tolerance = 80;
     for (int i = 0; i < output.rows; ++i) {
         for (int j = 0; j < output.cols; ++j) {
-            if (img.at<cv::Vec3b>(i, j) == mostFrequentColor) {
+            if (cv::norm(img.at<cv::Vec3b>(i, j), mostFrequentColor) <= tolerance ) {
                 output.at<cv::Vec3b>(i, j) = desiredColor;
             }
         }
@@ -145,9 +147,27 @@ cv::Mat fieldSegmentation::mostFrequentColorFiltering(const cv::Mat img){
 
 
 void fieldSegmentation::noiseReduction(cv::Mat img){
+    // Create a kernel for dilation
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+
+    // Create an empty output image for the result
+    cv::Mat result1;
+
+    // Apply dilation to each channel separately
+    std::vector<cv::Mat> channels;
+    cv::split(img, channels); // Split the image into B, G, and R channels
+
+    for (int i = 0; i < 3; ++i) {
+        //cv::morphologyEx(channels[i], channels[i], cv::MORPH_CLOSE, kernel);
+        cv::erode(channels[i], channels[i], cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)), cv::Point(-1,-1), 3);
+
+    }
+
+    // Merge the channels back into a 3-channel image
+    cv::merge(channels, result1);
     // Convert the image to HSV color space
     Mat hsv;
-    cvtColor(img, hsv, cv::COLOR_BGR2HSV);
+    cvtColor(result1, hsv, cv::COLOR_BGR2HSV);
 
     // Define the range of green color in HSV
     cv::Scalar lower_green(35, 50, 50); // Adjust these values as needed
@@ -185,7 +205,7 @@ void fieldSegmentation::noiseReduction(cv::Mat img){
             double distance = matchShapes(contours[mainGreenIdx], contours[i], cv::CONTOURS_MATCH_I2, 0);
 
             // If the distance is below a threshold, include the blob
-            if (distance < 2) {
+            if (distance < 3.95) {
                 drawContours(result_mask, contours, i, cv::Scalar(255), cv::FILLED);
             }
         }

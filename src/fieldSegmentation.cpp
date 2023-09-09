@@ -30,21 +30,6 @@ void fieldSegmentation::startprocess()
     displayMat(result_image_, "risultato");
 }
 
-// -----------------------------------------------------------------------------
-/*
-
-        Alternatives for solving the filed segmentation problems:
-            1 - compare the result with the original image to understand if the region is the same
-            2 - if a black shape is surrounded by green shapes (all 4 sides) -> connect
-            3 - merge result with different color suppressed images
-            4 - dilate / erode to connect dark areas
-            5 - kmean 8 e verifica cluster ???
-
-*/
-// -----------------------------------------------------------------------------
-
-
-
 // allow to reduce the number of colors
 cv::Mat fieldSegmentation::colorSuppression(cv::Mat img, int k){ // k = number of color quantization
     
@@ -173,12 +158,18 @@ void fieldSegmentation::noiseReduction(cv::Mat img){
     cv::split(img, channels); // Split the image into B, G, and R channels
 
     for (int i = 0; i < 3; ++i) {
-        cv::morphologyEx(channels[i], channels[i], cv::MORPH_CLOSE, kernel);
+        //cv::morphologyEx(channels[i], channels[i], cv::MORPH_CLOSE, kernel);
         //cv::erode(channels[i], channels[i], cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)), cv::Point(-1,-1), 1);
+        cv::erode(channels[i], channels[i], kernel, cv::Point(-1,-1), 3);
+        cv::dilate(channels[i], channels[i], kernel, cv::Point(-1,-1), 4);
+
     }
 
     // Merge the channels back into a 3-channel image
-    cv::merge(channels, result1);
+    cv::merge(channels, result1); 
+
+    displayMat(result1, "after morph modif", 1);
+
     // Convert the image to HSV color space
     Mat hsv;
     cvtColor(result1, hsv, cv::COLOR_BGR2HSV);
@@ -220,7 +211,7 @@ void fieldSegmentation::noiseReduction(cv::Mat img){
             double distance = matchShapes(contours[mainGreenIdx], contours[i], cv::CONTOURS_MATCH_I2, 0);
 
             // If the distance is below a threshold, include the blob
-            if (distance < 2.7) {
+            if (distance < 4.75) {
                 drawContours(result_mask, contours, i, cv::Scalar(255), cv::FILLED);
             }
         }

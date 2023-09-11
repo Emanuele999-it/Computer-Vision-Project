@@ -10,59 +10,26 @@ void fieldSegmentation::startprocess()
 {
     // Reduce noise to input image
     cv::Mat resultBilateral, resultGaussian;
-    cv::bilateralFilter(input_image_,resultBilateral,11,15,15);
+    cv::bilateralFilter(input_image_,resultBilateral,5,3000,40);
     cv::GaussianBlur(resultBilateral,resultGaussian, cv::Size(5,5),3,3);
 
-    displayMat(resultGaussian, "gaussian res", 1);
+    //displayMat(resultGaussian, "gaussian res", 1);
 
     // clusterize by similar colors
     cv::Mat colorSuppressed = colorSuppression(resultGaussian, 4);
 
-    displayMat(input_image_, "input image", 1);
-    displayMat(colorSuppressed, "quantized_image",1);
+    //displayMat(input_image_, "input image", 1);
+    //displayMat(colorSuppressed, "quantized_image",1);
 
     Mat mfc = mostFrequentColorFiltering(colorSuppressed, resultGaussian);
 
-    displayMat(mfc, "mostFreqColor",1);
+    //displayMat(mfc, "mostFreqColor",1);
 
     noiseReduction(mfc);
 
-    displayMat(result_image_, "risultato");
+    //displayMat(result_image_, "risultato");
 }
 
-// allow to reduce the number of colors
-cv::Mat fieldSegmentation::colorSuppression(cv::Mat img, int k){ // k = number of color quantization
-    
-    cv::Mat reshaped_image = img.reshape(1, img.rows * img.cols); 
-
-    cv::Mat labels, centers;
-    cv::Mat reshaped_image_float;
-    reshaped_image.convertTo(reshaped_image_float, CV_32F); 
-
-    cv::kmeans(reshaped_image_float, k, labels, cv::TermCriteria(), 10, cv::KMEANS_RANDOM_CENTERS, centers); 
-
-    cv::Mat quantized_image(img.size(), img.type());
-    for (int i = 0; i < reshaped_image.rows; ++i) {
-        quantized_image.at<cv::Vec3b>(i) = centers.at<cv::Vec3f>(labels.at<int>(i));
-    }
-
-    return quantized_image;
-}
-
-
-// Custom hash function for Vec3b
-struct Vec3bHash {
-    size_t operator()(const cv::Vec3b& v) const {
-        return std::hash<int>()(v[0]) ^ std::hash<int>()(v[1]) ^ std::hash<int>()(v[2]);
-    }
-};
-
-// Custom equality function for Vec3b
-struct Vec3bEqual {
-    bool operator()(const cv::Vec3b& a, const cv::Vec3b& b) const {
-        return a[0] == b[0] && a[1] == b[1] && a[2] == b[2];
-    }
-};
 
 Mat fieldSegmentation::maskGeneration(Mat img){
 
@@ -89,63 +56,6 @@ Mat fieldSegmentation::maskGeneration(Mat img){
 
 
 
-cv::Mat fieldSegmentation::mostFrequentColorFiltering(const cv::Mat img, const cv::Mat blurred){
-    // Reshape the image to a list of pixels
-    Mat reshaped = img.reshape(1, img.rows * img.cols);
-
-    // Count the frequency of each color using an unordered_map with custom hash and equality functions
-    std::unordered_map<cv::Vec3b, int, Vec3bHash, Vec3bEqual> colorFreq;
-    for (int i = 0; i < reshaped.rows; ++i) {
-        cv::Vec3b pixel = reshaped.at<cv::Vec3b>(i, 0);
-
-        // Calculate the sum of color channels (R+G+B)
-        int colorSum = pixel[0] + pixel[1] + pixel[2];
-
-        // Skip colors that are too dark based on the thresholdSum
-        if (colorSum >= 60) {
-            colorFreq[pixel]++;
-        }
-    }
-
-    // Find the most frequent color
-    cv::Vec3b mostFrequentColor;
-    int maxFrequency = 0;
-    for (const auto& entry : colorFreq) {
-        if (entry.second > maxFrequency) {
-            maxFrequency = entry.second;
-            mostFrequentColor = entry.first;
-        }
-    }
-
-    cv::Vec3b desiredColor(0, 255, 0);
-
-    // Create an output image with only the regions with the most frequent color
-    Mat output = Mat::zeros(img.size(), img.type());
-    double tolerance = 70;
-    for (int i = 0; i < output.rows; ++i) {
-        for (int j = 0; j < output.cols; ++j) {
-
-            cv::Vec3b pixel_img = img.at<cv::Vec3b>(i, j);
-            cv::Vec3b pixel_blurred = blurred.at<cv::Vec3b>(i, j);
-
-            if(cv::norm(img.at<cv::Vec3b>(i, j), mostFrequentColor) <= tolerance) {
-                output.at<cv::Vec3b>(i,j) = desiredColor;
-            }
-            /*
-            else{
-                // giocare con variazione colori per ottenere risultati buoni per immagine 2 e 8 
-                double pixel_difference = cv::norm(pixel_blurred, pixel_img);
-                if (pixel_difference <= tolerance){
-                        output.at<cv::Vec3b>(i,j) = desiredColor;
-                }
-            }
-            */
-        }
-    }
-    return output;
-}
-
-
 void fieldSegmentation::noiseReduction(cv::Mat img){
     // Create a kernel for dilation
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
@@ -168,7 +78,7 @@ void fieldSegmentation::noiseReduction(cv::Mat img){
     // Merge the channels back into a 3-channel image
     cv::merge(channels, result1); 
 
-    displayMat(result1, "after morph modif", 1);
+    //displayMat(result1, "after morph modif", 1);
 
     // Convert the image to HSV color space
     Mat hsv;

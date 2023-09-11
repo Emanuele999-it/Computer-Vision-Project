@@ -1,10 +1,4 @@
 #include "imageProcessing.h"
-#include "fieldSegmentation.h"
-#include <opencv2/core.hpp>
-#include <opencv2/opencv.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/calib3d.hpp>
-
 
 using cv::Mat;
 using std::vector;
@@ -17,8 +11,20 @@ imageProcessing::imageProcessing(Mat input_image){
 
 
 void imageProcessing::startprocess(){
+
+    // --------------------- Field segmentation --------------------------
     fieldSegmentation field(input_image_);
     field.startprocess();
+
+    cv::Mat result_field_segmentation = field.returnResultImage();
+    displayMat(result_field_segmentation, "resutl field segmentation");
+
+    
+    // --------------------- Player segmentation --------------------------
+    playerSegmentation player(input_image_, result_field_segmentation);
+    cv::Mat result_player_segmentation = player.startprocess();
+
+    displayMat(result_player_segmentation, "resutl player segmentation");
 }
 
 

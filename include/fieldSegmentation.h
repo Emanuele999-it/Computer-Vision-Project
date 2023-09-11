@@ -4,6 +4,8 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include "displayMat.h"
+#include "colorSuppression.h"
+#include "mostFrequentColorFiltering.h"
 
 class fieldSegmentation{
 
@@ -12,9 +14,7 @@ class fieldSegmentation{
         cv::Mat result_image_;
         //std::vector<std::vector<cv::Point>> contours_vec_;
 
-        cv::Mat colorSuppression(cv::Mat img, int k); 
         cv::Mat maskGeneration(cv::Mat img);
-        cv::Mat mostFrequentColorFiltering(const cv::Mat img, const cv::Mat blurred);
         void noiseReduction(cv:: Mat img);
 
     public:

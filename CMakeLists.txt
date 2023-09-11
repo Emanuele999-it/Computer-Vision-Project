@@ -9,7 +9,9 @@ find_package(OpenCV REQUIRED)
 include_directories(include ${OpenCV_INCLUDE_DIRS})
 
 # Create executables
-add_executable(CVProject src/main.cpp src/imageProcessing.cpp src/displayMat.cpp src/fieldSegmentation.cpp)
+add_executable(CVProject src/main.cpp src/imageProcessing.cpp src/displayMat.cpp 
+                src/fieldSegmentation.cpp src/colorSuppression.cpp src/playerSegmentation.cpp
+                src/mostFrequentColorFiltering.cpp)
 
 # Link against OpenCV library
 target_link_libraries(CVProject ${OpenCV_LIBS})

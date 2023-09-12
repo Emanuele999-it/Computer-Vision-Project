@@ -56,7 +56,7 @@ Mat playerSegmentation::startprocess(){
 
 
     // ---------------------- Filter by contours ----------------------
-
+/*
     Mat blurred;
     cv::GaussianBlur(input_clone, blurred, cv::Size(3,3),3,3);
     
@@ -91,9 +91,9 @@ Mat playerSegmentation::startprocess(){
     }
 
     //displayMat(result, "filtered by contours");
-
+*/
     // ---------------------- Removed background ----------------------
-
+/*
     // Create a mask for the black regions
     cv::Mat mask2;
     cv::threshold(result, mask2, 1, 255, cv::THRESH_BINARY);
@@ -109,12 +109,13 @@ Mat playerSegmentation::startprocess(){
     Mat partial_result_col_suppression = colorSuppression(segmentationNoField,5);
 
     displayMat(partial_result_col_suppression, "partial res col supp");
-
+*/
 
     // ---------------------- Grabcut ----------------------------------
+
     // Apply color quantization
     cv::Mat quantizedImage;
-    cv::cvtColor(partial_result_col_suppression, quantizedImage, cv::COLOR_BGR2Lab); // Convert to Lab color space
+    cv::cvtColor(input_clone, quantizedImage, cv::COLOR_BGR2Lab); // Convert to Lab color space
     quantizedImage.convertTo(quantizedImage, CV_32F); // Convert to float for k-means
     int K = 3; // Number of clusters (adjust as needed)
     cv::Mat reshapedImage = quantizedImage.reshape(1, quantizedImage.rows * quantizedImage.cols);
@@ -137,7 +138,7 @@ Mat playerSegmentation::startprocess(){
     cv::cvtColor(clusteredImage, clusteredImage, cv::COLOR_Lab2BGR);
 
     // Define a rectangle around the human figure to initialize GrabCut
-    cv::Rect rectangle(50,50, input_image_.cols - 100, input_image_.rows - 100);
+    cv::Rect rectangle(50,50, input_image_.cols-50, input_image_.rows-50);
 
     // Initialize mask and grabCut parameters
     cv::Mat mask(input_image_.size(), CV_8UC1, cv::Scalar(cv::GC_BGD));
@@ -146,7 +147,7 @@ Mat playerSegmentation::startprocess(){
     cv::Mat bgdModel, fgdModel;
 
     // Apply GrabCut algorithm with the clustered image
-    cv::grabCut(clusteredImage, mask, rectangle, bgdModel, fgdModel, 10, cv::GC_INIT_WITH_RECT);
+    cv::grabCut(clusteredImage, mask, rectangle, bgdModel, fgdModel, 1, cv::GC_INIT_WITH_RECT);
 
     // Modify the mask to consider probable and definite foreground as foreground
     cv::Mat resultMask = (mask == cv::GC_PR_FGD) | (mask == cv::GC_FGD);

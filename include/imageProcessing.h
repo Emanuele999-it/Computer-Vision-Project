@@ -11,6 +11,7 @@
 #include "displayMat.h"
 #include "fieldSegmentation.h"
 #include "playerSegmentation.h"
+#include "playerDetection.h"
 
 
 

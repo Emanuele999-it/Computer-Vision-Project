@@ -110,20 +110,68 @@ void playerDetection::startprocess(){
 
         }
 */
-        for (float scale = 1.1; scale >= 0.4; scale -= 0.1){
+        for (float scale = 1.1; scale >= 0.1; scale -= 0.2){
 
             cv::Mat resized_img;
             cv::resize(img_gray, resized_img, cv::Size(), scale, scale);
 
-            hog.detectMultiScale(resized_img, rects, weights, 0, cv::Size(2, 2), cv::Size(15,15), 1.1, 1, false);
+            hog.detectMultiScale(resized_img, rects, weights, 0, cv::Size(2, 2), cv::Size(15,15), 1.04, 1, false);
 
+            for(cv::Rect element : rects){
+                // Adjust the rectangles to the original image size
+                element.x /= scale;
+                element.y /= scale;
+                element.width /= scale;
+                element.height /= scale;
+
+                all_rects.push_back(element);
+            }
+/*
             // Adjust the rectangles to the original image size and draw them
             for (size_t i = 0; i < rects.size(); i++){
 
                 rects[i] = cv::Rect(rects[i].x / scale, rects[i].y / scale, rects[i].width / scale, rects[i].height / scale);
                 cv::rectangle(output_img, rects[i], cv::Scalar(0, 255, 0), 2);
             }
+*/
         }
+    }
+
+    std::cout << "all_rects numbers: " << all_rects.size() << std::endl;
+
+    std::vector<cv::Rect> filteredDetections;
+
+    for (size_t i = 0; i < all_rects.size(); i++) {
+        bool keep = true;
+
+        for (size_t j = 0; j < all_rects.size(); j++) {
+            // Define your similarity criteria here.
+            // For example, you can check if the two rectangles have a significant overlap.
+            if ( i != j){
+                float overlap = (float)(all_rects[i] & all_rects[j]).area() / (float)(all_rects[i] | all_rects[j]).area();
+
+                if (overlap > 0.99 || all_rects[i].x >= all_rects[j].x &&
+                    all_rects[i].y >= all_rects[j].y &&
+                    (all_rects[i].x + all_rects[i].width) <= (all_rects[j].x + all_rects[j].width) &&
+                    (all_rects[i].y + all_rects[i].height) <= (all_rects[j].y + all_rects[j].height)) {
+
+                    keep = false; // Discard one of the rectangles if they are too similar or one is inside the other
+                    break;
+                }
+            }
+        }
+
+        if (keep) {
+            filteredDetections.push_back(all_rects[i]);
+        }
+    }
+
+        std::cout << "filteredDetections numbers: " << filteredDetections.size() << std::endl;
+
+
+    for (size_t i = 0; i < filteredDetections.size(); i++){
+        filteredDetections[i] = cv::Rect(filteredDetections[i].x, filteredDetections[i].y, filteredDetections[i].width, filteredDetections[i].height);
+        cv::rectangle(output_img, filteredDetections[i], cv::Scalar(0, 255, 0), 2);
     }
 }
 

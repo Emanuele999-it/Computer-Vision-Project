@@ -23,7 +23,7 @@ int main (int argc, char** argv){
             cerr << "Error: Could not load image " << argv[1] << endl;
             return -1;
     }
-
+    
     // Start image processing
     imageProcessing imgProc(image);
     imgProc.startprocess();

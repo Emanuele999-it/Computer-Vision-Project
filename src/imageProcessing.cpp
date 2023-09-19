@@ -12,8 +12,8 @@ imageProcessing::imageProcessing(Mat input_image){
 
 void imageProcessing::startprocess(){
 
-
 /*
+
     // --------------------- Field segmentation --------------------------
     fieldSegmentation field(input_image_);
     field.startprocess();
@@ -38,6 +38,7 @@ void imageProcessing::startprocess(){
     cv:: Mat detection = player_detection.getOutput();
 
     displayMat(detection, "player detection");
+    
 }
 
 

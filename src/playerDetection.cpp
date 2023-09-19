@@ -73,8 +73,6 @@ void playerDetection::startprocess(){
     Mat img_gray;
     cvtColor(blurred, img_gray, cv::COLOR_BGR2GRAY);
 
-    
-
     // Apply local contrast enhancement to the grayscale image using CLAHE
     cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
     clahe->setClipLimit(4); // You can adjust this value to control the enhancement
@@ -110,7 +108,9 @@ void playerDetection::startprocess(){
 
         }
 */
-        for (float scale = 1.1; scale >= 0.1; scale -= 0.2){
+
+
+        for (float scale = 1.1; scale >= 0.4; scale -= 0.2){
 
             cv::Mat resized_img;
             cv::resize(img_gray, resized_img, cv::Size(), scale, scale);
@@ -166,8 +166,7 @@ void playerDetection::startprocess(){
         }
     }
 
-        std::cout << "filteredDetections numbers: " << filteredDetections.size() << std::endl;
-
+    std::cout << "filteredDetections numbers: " << filteredDetections.size() << std::endl;
 
     for (size_t i = 0; i < filteredDetections.size(); i++){
         filteredDetections[i] = cv::Rect(filteredDetections[i].x, filteredDetections[i].y, filteredDetections[i].width, filteredDetections[i].height);

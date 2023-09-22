@@ -27,7 +27,7 @@ void imageProcessing::startprocess(){
     playerSegmentation player(input_image_, result_field_segmentation);
     cv::Mat result_player_segmentation = player.startprocess();
 
-    displayMat(result_player_segmentation, "resutl player segmentation");
+    displayMat(result_player_segmentation, "resutl player segmentation");BBBV
 
 */
 

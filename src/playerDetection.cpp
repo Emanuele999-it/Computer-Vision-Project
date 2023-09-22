@@ -63,12 +63,14 @@ void playerDetection::startprocess(){
     output_img = input_image_.clone();
 
     cv::HOGDescriptor hog;
-    hog.setSVMDetector(cv::HOGDescriptor::getDefaultPeopleDetector());
+    //hog.setSVMDetector(cv::HOGDescriptor::getDefaultPeopleDetector());
 
+// ---------------------------------------------------------------------------------------------
 
-    hog.gammaCorrection = false;
-    hog.L2HysThreshold = 230;
-    hog.nlevels = 128;
+    hog.load("../build/model.yml");
+
+// -----------------------------------------------------------------------------------------------
+
 
     Mat img_gray;
     cvtColor(blurred, img_gray, cv::COLOR_BGR2GRAY);

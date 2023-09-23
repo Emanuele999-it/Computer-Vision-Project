@@ -2,22 +2,18 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/ml.hpp"
 #include "opencv2/objdetect.hpp"
+#include "opencv2/videoio.hpp"
 #include <iostream>
+#include <time.h>
 #include <filesystem>
+
 
 
 using namespace cv;
 using namespace cv::ml;
 using namespace std;
 
-namespace fs = std::filesystem;
 
-
-vector<float> get_svm_detector(const Ptr<SVM> &svm);
-void convert_to_ml(const std::vector<Mat> &train_samples, Mat &trainData);
-void load_images(const String &dirname, vector<Mat> &img_lst,  bool pos, bool showImages);
-void sample_neg(const vector<Mat> &full_neg_lst, vector<Mat> &neg_lst, const Size &size);
-void computeHOGs(const Size wsize, const vector<Mat> &img_lst, vector<Mat> &gradient_lst, bool use_flip);
 
 vector<float> get_svm_detector(const Ptr<SVM> &svm)
 {
@@ -68,7 +64,6 @@ void convert_to_ml(const vector<Mat> &train_samples, Mat &trainData)
 
 void load_images(const String &dirname, vector<Mat> &img_lst, bool pos)
 {
-
     cv::Size newSize = cv::Size(64,128);
     vector<String> files;
     glob(dirname, files);
@@ -85,11 +80,7 @@ void load_images(const String &dirname, vector<Mat> &img_lst, bool pos)
             cout << files[i] << " is invalid!" << endl; // invalid image, skip it.
             continue;
         }
-        if (showImages)
-        {
-            imshow("image", img);
-            waitKey(200);
-        }
+
         img_lst.push_back(img);
     }
 }
@@ -110,7 +101,7 @@ void sample_neg(const vector<Mat> &full_neg_lst, vector<Mat> &neg_lst, const Siz
         }
 }
 
-void computeHOGs(const Size wsize, const vector<Mat> &img_lst, vector<Mat> &gradient_lst, bool use_flip)
+void computeHOGs(const Size wsize, const vector<Mat> &img_lst, vector<Mat> &gradient_lst)
 {
     HOGDescriptor hog;
     hog.winSize = wsize;
@@ -127,12 +118,6 @@ void computeHOGs(const Size wsize, const vector<Mat> &img_lst, vector<Mat> &grad
             cvtColor(img_lst[i](r), gray, COLOR_BGR2GRAY);
             hog.compute(gray, descriptors, Size(8, 8), Size(0, 0));
             gradient_lst.push_back(Mat(descriptors).clone());
-            if (use_flip)
-            {
-                flip(gray, gray, 1);
-                hog.compute(gray, descriptors, Size(8, 8), Size(0, 0));
-                gradient_lst.push_back(Mat(descriptors).clone());
-            }
         }
     }
 }
@@ -142,26 +127,50 @@ int main(int argc, char **argv)
 {
     if (argc < 3)
 	{
-		cerr << "Usage: " << argv[0] << " <filename>" << endl;
-		return -1;
+			cerr << "Missing path informations" << endl;
+			return -1;
 	}
 
     String pos_dir = argv[1];
     String neg_dir = argv[2];
-    int detector_width = argc >= 5 ? (int)argv[3] : 64;
-    int detector_height = argc >= 5 ? (int)argv[4] : 128;
+    
+    int detector_width = 64;
+    int detector_height = 128;
 
+    // Convert last 2 inputs to int if it is possible
+    if(argc == 5){
+        
+        char *input = argv[3];
+        char *endptr;
 
+        long num = strtol(input, &endptr, 10);
+
+        if (*endptr != '\0' && *endptr != '\n') {
+            input = argv[4];
+            num = strtol(input, &endptr, 10);
+            if(*endptr != '\0' && *endptr != '\n'){
+                detector_width = std::stoi(argv[3]);
+                detector_height = std::stoi(argv[4]);
+            }
+        }        
+    }
+
+    if (pos_dir.empty() || neg_dir.empty())
+    {
+        std::cout << "One of the folders is empty" << std::endl;
+        exit(1);
+    }
     vector<Mat> pos_lst, full_neg_lst, neg_lst, gradient_lst;
     vector<int> labels;
     
     load_images(pos_dir, pos_lst, true);
-
-    load_images(neg_dir, neg_lst, false);
-
-    if (pos_lst.size() == 0)
+    if (pos_lst.size() > 0)
     {
-        clog << "no image in " << pos_dir << endl;
+        std::cout << "Loaded " << pos_lst.size() << " positive images" << std::endl;
+    }
+    else
+    {
+        clog << "No image in " << pos_dir << endl;
         return 1;
     }
 
@@ -185,22 +194,26 @@ int main(int argc, char **argv)
     }
 
     load_images(neg_dir, full_neg_lst, false);
-
+    
     sample_neg(full_neg_lst, neg_lst, pos_image_size);
 
-    computeHOGs(pos_image_size, pos_lst);
-
+    computeHOGs(pos_image_size, pos_lst, gradient_lst);
     size_t positive_count = gradient_lst.size();
     labels.assign(positive_count, +1);
 
-    computeHOGs(pos_image_size, neg_lst);
+    std::cout << "Processed: " << positive_count << " positive images" << endl;
+
+    computeHOGs(pos_image_size, neg_lst, gradient_lst);
+    std::cout << "Histogram of Gradients calculated for negative images" << endl;
+
     size_t negative_count = gradient_lst.size() - positive_count;
     labels.insert(labels.end(), negative_count, -1);
     CV_Assert(positive_count < labels.size());
-
+    std::cout << "Processed " << negative_count << " negative images" << std::endl;
+    
     Mat train_data;
     convert_to_ml(gradient_lst, train_data);
-
+    std::cout << "Training SVM...";
     Ptr<SVM> svm = SVM::create();
     /* Default values to train SVM */
     svm->setCoef0(0.0);
@@ -209,14 +222,18 @@ int main(int argc, char **argv)
     svm->setGamma(0);
     svm->setKernel(SVM::LINEAR);
     svm->setNu(0.5);
-    svm->setP(0.1);             // for EPSILON_SVR, epsilon in loss function?
-    svm->setC(0.01);            // From paper, soft classifier
+    svm->setP(0.1);
+    svm->setC(0.01);
     svm->setType(SVM::EPS_SVR); // C_SVC; // EPSILON_SVR; // may be also NU_SVR; // do regression task
     svm->train(train_data, ROW_SAMPLE, labels);
+    std::cout << "Training done" << endl;
     
     HOGDescriptor hog;
     hog.winSize = pos_image_size;
     hog.setSVMDetector(get_svm_detector(svm));
-    hog.save("model.yml");
+    hog.save("../model/model.yml");
+
+    std::cout << "Model saved" << endl;
+
     return 0;
 }

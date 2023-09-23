@@ -32,6 +32,9 @@ void imageProcessing::startprocess(){
 */
 
     // --------------------- Player detection -----------------------------
+
+    std::cout << "Start player detection" << std::endl;
+    
     playerDetection player_detection(input_image_);
     player_detection.startprocess();
 

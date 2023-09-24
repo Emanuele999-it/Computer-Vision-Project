@@ -2,17 +2,13 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/ml.hpp"
 #include "opencv2/objdetect.hpp"
-#include "opencv2/videoio.hpp"
 #include <iostream>
-#include <time.h>
 #include <filesystem>
-
 
 
 using namespace cv;
 using namespace cv::ml;
 using namespace std;
-
 
 
 vector<float> get_svm_detector(const Ptr<SVM> &svm)
@@ -23,10 +19,18 @@ vector<float> get_svm_detector(const Ptr<SVM> &svm)
     // get the decision function
     Mat alpha, svidx;
     double rho = svm->getDecisionFunction(0, alpha, svidx);
-    CV_Assert(alpha.total() == 1 && svidx.total() == 1 && sv_total == 1);
-    CV_Assert((alpha.type() == CV_64F && alpha.at<double>(0) == 1.) ||
-              (alpha.type() == CV_32F && alpha.at<float>(0) == 1.f));
-    CV_Assert(sv.type() == CV_32F);
+    if (alpha.total() != 1 || svidx.total() != 1 || sv_total != 1) {
+        std::cout << "Error: Conditions not met!" << std::endl;
+        exit(1);
+    }
+    if (!((alpha.type() == CV_64F && alpha.at<double>(0) == 1.0) || (alpha.type() == CV_32F && alpha.at<float>(0) == 1.0f))) {
+        std::cout << "Error: Conditions not met!" << std::endl;
+        exit(1);
+    }
+    if (sv.type() != CV_32F) {
+        std::cout << "Error: Condition not met!" << std::endl;
+        exit(1);
+    }
     vector<float> hog_detector(sv.cols + 1);
     memcpy(&hog_detector[0], sv.ptr(), sv.cols * sizeof(hog_detector[0]));
     hog_detector[sv.cols] = (float)-rho;
@@ -34,21 +38,19 @@ vector<float> get_svm_detector(const Ptr<SVM> &svm)
 }
 
 
-/*
- * Convert training/testing set to be used by OpenCV Machine Learning algorithms.
- * TrainData is a matrix of size (#samples x max(#cols,#rows) per samples), in 32FC1.
- * Transposition of samples are made if needed.
- */
 void convert_to_ml(const vector<Mat> &train_samples, Mat &trainData)
 {
     //--Convert data
     const int rows = (int)train_samples.size();
     const int cols = (int)std::max(train_samples[0].cols, train_samples[0].rows);
-    Mat tmp(1, cols, CV_32FC1); //< used for transposition if needed
+    Mat tmp(1, cols, CV_32FC1);
     trainData = Mat(rows, cols, CV_32FC1);
     for (size_t i = 0; i < train_samples.size(); ++i)
     {
-        CV_Assert(train_samples[i].cols == 1 || train_samples[i].rows == 1);
+        if (!(train_samples[i].cols == 1 || train_samples[i].rows == 1)) {
+            std::cout << "Error: Condition not met!" << std::endl;
+            exit(1);
+        }
         if (train_samples[i].cols == 1)
         {
             transpose(train_samples[i], tmp);
@@ -127,7 +129,7 @@ int main(int argc, char **argv)
 {
     if (argc < 3)
 	{
-			cerr << "Missing path informations" << endl;
+			std::cout << "Missing path informations" << std::endl;
 			return -1;
 	}
 
@@ -170,7 +172,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        clog << "No image in " << pos_dir << endl;
+        cout << "No image in " << pos_dir << endl;
         return 1;
     }
 
@@ -197,12 +199,14 @@ int main(int argc, char **argv)
     
     sample_neg(full_neg_lst, neg_lst, pos_image_size);
 
+    // Compute Hog for positive images
     computeHOGs(pos_image_size, pos_lst, gradient_lst);
     size_t positive_count = gradient_lst.size();
     labels.assign(positive_count, +1);
 
     std::cout << "Processed: " << positive_count << " positive images" << endl;
 
+    // Compute Hog for negative images
     computeHOGs(pos_image_size, neg_lst, gradient_lst);
     std::cout << "Histogram of Gradients calculated for negative images" << endl;
 
@@ -213,7 +217,7 @@ int main(int argc, char **argv)
     
     Mat train_data;
     convert_to_ml(gradient_lst, train_data);
-    std::cout << "Training SVM...";
+    std::cout << "Training SVM";
     Ptr<SVM> svm = SVM::create();
     /* Default values to train SVM */
     svm->setCoef0(0.0);
@@ -224,7 +228,7 @@ int main(int argc, char **argv)
     svm->setNu(0.5);
     svm->setP(0.1);
     svm->setC(0.01);
-    svm->setType(SVM::EPS_SVR); // C_SVC; // EPSILON_SVR; // may be also NU_SVR; // do regression task
+    svm->setType(SVM::EPS_SVR);
     svm->train(train_data, ROW_SAMPLE, labels);
     std::cout << "Training done" << endl;
     

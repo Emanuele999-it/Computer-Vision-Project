@@ -1,7 +1,7 @@
 #include "colorSuppression.h"
 
 // allow to reduce the number of colors
-cv::Mat colorSuppression(cv::Mat img, int k){ // k = number of color quantization
+const cv::Mat colorSuppression(const cv::Mat & img, int k){ // k = number of color quantization
     
     cv::Mat reshaped_image = img.reshape(1, img.rows * img.cols); 
 

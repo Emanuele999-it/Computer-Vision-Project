@@ -10,6 +10,7 @@
 
 #include "displayMat.h"
 #include "colorSuppression.h"
+#include "playerTeam.h"
 
 
 class playerDetection{
@@ -20,7 +21,7 @@ class playerDetection{
         //void ResizeBoxes(cv::Rect& box);
 
     public:
-        playerDetection(cv::Mat input_image);
+        playerDetection(const cv::Mat & input_image);
         void startprocess();
         cv::Mat getOutput() const;
         

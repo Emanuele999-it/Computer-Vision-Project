@@ -2,7 +2,7 @@
 
 using cv::Mat;
 
-playerSegmentation::playerSegmentation(cv::Mat input_image, cv::Mat fieldSegmentation){
+playerSegmentation::playerSegmentation(const cv::Mat & input_image, const cv::Mat & fieldSegmentation){
     input_image_ = input_image;
     field_segmentation_ = fieldSegmentation;
 }

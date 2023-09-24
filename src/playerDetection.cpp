@@ -2,7 +2,7 @@
 
 using cv::Mat;
 
-playerDetection::playerDetection(Mat input_image){
+playerDetection::playerDetection(const Mat & input_image){
     input_image_ = input_image;
 
 }
@@ -13,9 +13,9 @@ void playerDetection::startprocess(){
 
     Mat blurred;
     cv::bilateralFilter(input_clone, blurred, 5, 1000, 400);
-    cv::GaussianBlur(blurred,blurred, cv::Size(9,9), 2);
+    //cv::GaussianBlur(blurred,blurred, cv::Size(9,9), 2);
 
-    cv::Mat colorSupp = colorSuppression(blurred, 10);
+    //cv::Mat colorSupp = colorSuppression(blurred, 5);
     output_img = input_image_.clone();
 
     cv::HOGDescriptor hog;
@@ -26,9 +26,9 @@ void playerDetection::startprocess(){
     cvtColor(blurred, img_gray, cv::COLOR_BGR2GRAY);
 
     // Apply local contrast enhancement to the grayscale image using CLAHE
-    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
-    clahe->setClipLimit(4);
-    clahe->apply(img_gray, img_gray);
+    //cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+    //clahe->setClipLimit(20);
+    //clahe->apply(img_gray, img_gray);
 
     int exp = 6;
     int winSizeX = pow(2, exp);
@@ -43,12 +43,12 @@ void playerDetection::startprocess(){
         std::vector<double> weights;
 
 
-        for (float scale = 1; scale >= 0.3; scale -= 0.1){
+        for (float scale = 1; scale >= 0.8; scale -= 0.06){
 
             cv::Mat resized_img;
             cv::resize(img_gray, resized_img, cv::Size(), scale, scale);
 
-            hog.detectMultiScale(resized_img, rects, weights, 0, cv::Size(2, 2), cv::Size(15,15), 1.01, 1, false);
+            hog.detectMultiScale(resized_img, rects, weights, 0, cv::Size(8, 8), cv::Size(30,30), 1.03, 3, false);
 
             for(cv::Rect element : rects){
                 // Adjust the rectangles to the original image size
@@ -62,10 +62,13 @@ void playerDetection::startprocess(){
         }
     }
 
-    groupRectangles(all_rects, 2, 0.6);
+    groupRectangles(all_rects, 2, 0.4);
+
+    std::vector<int> teams = getPlayerTeam(input_clone, &all_rects);
+
     for (size_t i = 0; i < all_rects.size(); i++)
     {
-        std::cout <<  all_rects[i].x << " " << all_rects[i].y << " " << all_rects[i].width << " " << all_rects[i].height << std::endl;
+        std::cout <<  all_rects[i].x << " " << all_rects[i].y << " " << all_rects[i].width << " " << all_rects[i].height << " " << teams[i] <<std::endl;
         cv::rectangle(output_img, all_rects[i], cv::Scalar(0, 255, 0), 2);
     }
 }

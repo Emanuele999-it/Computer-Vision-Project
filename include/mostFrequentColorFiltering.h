@@ -4,6 +4,6 @@
 #include <opencv2/opencv.hpp>
 
 
-cv::Mat mostFrequentColorFiltering(const cv::Mat img, const cv::Mat blurred);	
+cv::Mat mostFrequentColorFiltering(const cv::Mat & img, const cv::Mat & blurred);	
 
 #endif // MOST_FREQUENT_COLOR_FILTERING_H

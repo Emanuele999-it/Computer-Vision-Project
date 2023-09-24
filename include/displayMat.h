@@ -4,7 +4,7 @@
 #include <opencv2/opencv.hpp>
 
 // Allow to visualize images with an inline function
-void displayMat(const cv::Mat &toDisplay, std::string name = "noName", int waitValue = 0);
+const void displayMat(const cv::Mat &toDisplay, std::string name = "noName", int waitValue = 0);
 	
 
 #endif // DISPLAYMAT__H

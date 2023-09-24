@@ -2,7 +2,7 @@
 
 using cv::Mat;
 
-fieldSegmentation::fieldSegmentation(cv::Mat input_image){
+fieldSegmentation::fieldSegmentation(const cv::Mat & input_image){
     input_image_ = input_image;
 }
 
@@ -31,7 +31,7 @@ void fieldSegmentation::startprocess()
 }
 
 
-Mat fieldSegmentation::maskGeneration(Mat img){
+Mat fieldSegmentation::maskGeneration(const Mat & img){
 
   // Filtering operation
   const int kNeighborhoodDiamter = 5;
@@ -56,7 +56,7 @@ Mat fieldSegmentation::maskGeneration(Mat img){
 
 
 
-void fieldSegmentation::noiseReduction(cv::Mat img){
+void fieldSegmentation::noiseReduction(const cv::Mat & img){
     // Create a kernel for dilation
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
 

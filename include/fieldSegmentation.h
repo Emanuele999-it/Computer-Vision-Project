@@ -14,11 +14,11 @@ class fieldSegmentation{
         cv::Mat result_image_;
         //std::vector<std::vector<cv::Point>> contours_vec_;
 
-        cv::Mat maskGeneration(cv::Mat img);
-        void noiseReduction(cv:: Mat img);
+        cv::Mat maskGeneration(const cv::Mat & img);
+        void noiseReduction(const cv:: Mat & img);
 
     public:
-        fieldSegmentation(cv::Mat input_image);
+        fieldSegmentation(const cv::Mat & input_image);
         void startprocess();
 
         cv::Mat returnInputImage() const;

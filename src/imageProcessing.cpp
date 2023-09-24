@@ -3,12 +3,9 @@
 using cv::Mat;
 using std::vector;
 
-cv::RNG rng(1000);
-
-imageProcessing::imageProcessing(Mat input_image){
+imageProcessing::imageProcessing(const Mat & input_image){
     input_image_=input_image;
 }
-
 
 void imageProcessing::startprocess(){
 

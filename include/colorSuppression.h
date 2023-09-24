@@ -4,7 +4,7 @@
 #include <opencv2/opencv.hpp>
 
 
-cv::Mat colorSuppression(cv::Mat img, int k);
+const cv::Mat colorSuppression(const cv::Mat &img, int k);
 	
 
 #endif // COLORSUPPRESSION__H

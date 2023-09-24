@@ -15,7 +15,7 @@ struct Vec3bEqual {
 };
 
 
-cv::Mat mostFrequentColorFiltering(const cv::Mat img, const cv::Mat blurred){
+cv::Mat mostFrequentColorFiltering(const cv::Mat & img, const cv::Mat & blurred){
     // Reshape the image to a list of pixels
     cv::Mat reshaped = img.reshape(1, img.rows * img.cols);
 

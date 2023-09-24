@@ -18,7 +18,7 @@ class playerSegmentation{
         cv::Mat field_segmentation_;
 
     public:
-        playerSegmentation(cv::Mat input_image, cv::Mat fieldSegmentation);
+        playerSegmentation(const cv::Mat & input_image, const cv::Mat & fieldSegmentation);
         cv::Mat startprocess();
 
 };

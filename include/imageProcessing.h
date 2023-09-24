@@ -14,14 +14,13 @@
 #include "playerDetection.h"
 
 
-
 class imageProcessing{
 
     private:
         cv::Mat input_image_;
 
     public:
-        imageProcessing(cv::Mat input_image);
+        imageProcessing(const cv::Mat & input_image);
         void startprocess();
 };
 

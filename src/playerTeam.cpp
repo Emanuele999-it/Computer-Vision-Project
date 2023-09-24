@@ -1,3 +1,5 @@
+// EMANUELE PASE 2097904
+
 #include "playerTeam.h"
 
 const std::vector<int> getPlayerTeam(const cv::Mat &img, const std::vector<cv::Rect> *rectangles){

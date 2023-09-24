@@ -1,3 +1,5 @@
+// AHMED AKYOL 2049673
+
 #include "playerSegmentation.h"
 
 using cv::Mat;
@@ -142,10 +144,10 @@ cv::Mat playerSegmentation::startprocess(){
 
         if (aver_intensity > dynamic_thr) {
 
-            cv::drawContours(result, contour, i, cv::Scalar(0, 0, 255), -1); // first team's color
+            cv::drawContours(result, contour, i, cv::Scalar(255, 0, 0), -1); // first team's color
         }
         else {
-            cv::drawContours(result, contour, i, cv::Scalar(255, 0, 0), -1); // second teams color
+            cv::drawContours(result, contour, i, cv::Scalar(0, 0, 255), -1); // second teams color
         }
     }
 

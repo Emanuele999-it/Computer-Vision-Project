@@ -1,3 +1,5 @@
+// EMANUELE PASE 2097904
+
 #include "colorSuppression.h"
 
 // Allow to reduce the number of colors

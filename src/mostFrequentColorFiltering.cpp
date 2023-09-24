@@ -1,3 +1,5 @@
+// EMANUELE PASE 2097904
+
 #include "mostFrequentColorFiltering.h"
 
 // Custom hash function for Vec3b

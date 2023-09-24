@@ -1,3 +1,5 @@
+// EMANUELE PASE 2097904
+
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include "imageProcessing.h"

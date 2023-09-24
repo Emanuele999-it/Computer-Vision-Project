@@ -1,3 +1,5 @@
+// EMANUELE PASE 2097904
+
 #include "imageProcessing.h"
 
 using cv::Mat;
@@ -41,11 +43,11 @@ void imageProcessing::startprocess(){
             }
         }
     }
-    displayMat(copy_segmentation, "res");
+    displayMat(copy_segmentation, "Segmentation");
 
 
     // --------------------- Player detection -----------------------------
-/*
+
     std::cout << "Start player detection" << std::endl;
     
     playerDetection player_detection(input_image_);
@@ -53,8 +55,8 @@ void imageProcessing::startprocess(){
 
     cv:: Mat detection = player_detection.getOutput();
 
-    displayMat(detection, "player detection");
-   */ 
+    displayMat(detection, "Player detection");
+
 }
 
 

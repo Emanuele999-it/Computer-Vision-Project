@@ -2,168 +2,155 @@
 
 using cv::Mat;
 
-playerSegmentation::playerSegmentation(const cv::Mat & input_image, const cv::Mat & fieldSegmentation){
+playerSegmentation::playerSegmentation(const cv::Mat & input_image){
     input_image_ = input_image;
-    field_segmentation_ = fieldSegmentation;
 }
 
-Mat playerSegmentation::startprocess(){
-// --------------------- Remove field form img ----------------------
-    // Adapt field-segmentation to player detection
+double playerSegmentation::calculateaver_intensity(const cv::Mat& image, const cv::Mat& mask) {
+    cv::Mat grayscale;
+    cv::cvtColor(image, grayscale, cv::COLOR_BGR2GRAY);
 
-    Mat field = field_segmentation_.clone();
-/* 
-    // Create a kernel for dilation
-    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+    cv::Scalar aver_intensity = cv::mean(grayscale, mask);
+    return aver_intensity[0];
+}
 
-    // Create an empty output image for the result
-    cv::Mat result1;
 
-    // Apply dilation to each channel separately
-    std::vector<cv::Mat> channels;
-    cv::split(temp, channels); // Split the image into B, G, and R channels
+cv::Mat playerSegmentation::startprocess(){
+    
 
-    for (int i = 0; i < 3; ++i) {
-        //cv::morphologyEx(channels[i], channels[i], cv::MORPH_CLOSE, kernel);
-        //cv::erode(channels[i], channels[i], cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)), cv::Point(-1,-1), 1);
-        cv::erode(channels[i], channels[i], kernel, cv::Point(-1,-1), 4);
+    // function to calculate the average pixel intensity
+
+    cv::Mat input = input_image_.clone();
+
+    // mean shift as a color suppression, so that the it is easier to process
+    cv::pyrMeanShiftFiltering(input, input, 3, 25, 4); // Spatial Window Size, Color Window Size, Maximum Pyramid Level
+
+    // bilateral filer in order to blur the even areas while keeping the edges
+    cv::Mat bilateral_out;
+    cv::bilateralFilter(input, bilateral_out, 9, 100, 100); // diameter, sigma color, sigma space
+    
+    //here initializing grabcut algorithm in order ro detect the players as foreground objects
+  
+    cv::Rect roi(0, 0, input.cols - 1 , input.rows - 1);
+
+    cv::Mat mask(input.size(), CV_8UC1, cv::Scalar(cv::GC_BGD));
+    mask(roi).setTo(cv::Scalar(cv::GC_PR_FGD)); 
+
+    cv::Mat background, foreground;
+
+    cv::grabCut(bilateral_out, mask, roi, background, foreground, 75, cv::GC_EVAL);
+
+    cv::Mat foreground_mask = (mask == cv::GC_PR_FGD);
+
+    cv::Mat binary_mask;
+    foreground_mask.convertTo(binary_mask, CV_8U);
+
+    cv::Mat grabcut_out;
+    input.copyTo(grabcut_out, binary_mask);
+    
+    // canny edge detection for being able to work on edges
+    cv::Mat canny_out;
+    cv::cvtColor(grabcut_out, canny_out, cv::COLOR_BGR2GRAY);
+    cv::Canny(canny_out, canny_out, 50, 100);
+
+    // the straight lines in the images are generally noises from the playground, advertisement panels etc.
+    //in order to eliminate these straight lines hough line transform is used.
+    std::vector<cv::Vec2f> lines;
+    cv::HoughLines(canny_out, lines, 1, CV_PI / 180, 175); 
+
+    for (size_t i = 0; i < lines.size(); i++) {
+        float rho = lines[i][0];
+        float theta = lines[i][1];
+
+        double a = cos(theta);
+        double b = sin(theta);
+        double x0 = a * rho;
+        double y0 = b * rho;
+        double x1 = x0 + 1000 * (-b); 
+        double y1 = y0 + 1000 * (a);
+        double x2 = x0 - 1000 * (-b); 
+        double y2 = y0 - 1000 * (a);
+
+        // black lines are drawn on top of the detected lines, so that we can eliminate them
+        cv::line(canny_out, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(0), 2);
     }
+
+    // here a bunch of morphological operations are applied. The reason for this to get rid of the thin lines, holes in the 
+    // image and other kinds of noises.
+    int size = 35;
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2 * size + 1, 2 * size + 1 ));
+    cv::dilate(canny_out, canny_out, kernel);
+    cv::erode(canny_out, canny_out, kernel);
+    
+    // vertical closing
+    cv::Mat vertical = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(1, 50));
+    cv::erode(canny_out, canny_out, vertical);
+    cv::dilate(canny_out, canny_out, vertical);
    
-    // Merge the channels back into a 3-channel image
-    cv::merge(channels, result1); 
-*/
-    cv::Mat input_clone = input_image_.clone();
-
-    // Convert the mask image to grayscale
-    cv::Mat maskGray;
-    cv::cvtColor(field, maskGray, cv::COLOR_BGR2GRAY);
-    
-    // Apply a binary threshold to create a binary mask
-    cv::Mat binaryMask1;
-    cv::threshold(maskGray, binaryMask1, 1, 255, cv::THRESH_BINARY);
-
-    // Iterate through the pixels of the target image
-    for (int y = 0; y < input_clone.rows; y++) {
-        for (int x = 0; x < input_clone.cols; x++) {
-            if (binaryMask1.at<uchar>(y, x) == 255) {
-                // If the pixel in the mask is white (green), set the corresponding pixel in the target image to black
-                input_clone.at<cv::Vec3b>(y, x) = cv::Vec3b(0, 0, 0);
-            }
-        }
-    }
-    
-    displayMat(input_clone, "input clone");
+    // horizontal closing
+    cv::Mat horizontal = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(50, 1));
+    cv::erode(canny_out, canny_out, horizontal);
+    cv::dilate(canny_out, canny_out, horizontal);
 
 
-    // ---------------------- Filter by contours ----------------------
-/*
-    Mat blurred;
-    cv::GaussianBlur(input_clone, blurred, cv::Size(3,3),3,3);
-    
-    cv::Mat gray;
-    cv::cvtColor(blurred, gray, cv::COLOR_BGR2GRAY);
-
-    //displayMat(gray, "gray");
-    
-    cv::Mat binary;
-    cv::threshold(gray, binary, 20, 200, cv::THRESH_BINARY);
-    //displayMat(binary, "binary pre");
-    //cv::dilate(binary, binary, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)), cv::Point(-1,-1), 7);
-
-    //displayMat(binary, "binary post");
-
-    
+    // contour detection is applied in oreder to fill the black regions inside players caused by morphological opertaions
     std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    cv::findContours(canny_out, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-    cv::Mat result = cv::Mat::zeros(blurred.size(), CV_8UC3); // Create a black image
+    cv::Mat final_out = cv::Mat::zeros(canny_out.size(), CV_8U);
 
-    double minContourArea = 500; // Set your minimum contour area here
-
-    for (size_t i = 0; i < contours.size(); i++) {
-        double contourArea = cv::contourArea(contours[i]);
-
-        // Check if the contour area is greater than the minimum area
-        if (contourArea > minContourArea) {
-            // Draw the contour on the result image
-            cv::drawContours(result, contours, i, cv::Scalar(255, 255, 255), -1); // Fill the contour with white
+    for (const auto& i : contours) {
+            
+      double contourArea = cv::contourArea(i);
+        if (contourArea > 1000) {
+                cv::drawContours(final_out, std::vector<std::vector<cv::Point>>{i}, 0, cv::Scalar(255), -1);
         }
     }
-
-    //displayMat(result, "filtered by contours");
-*/
-    // ---------------------- Removed background ----------------------
-/*
-    // Create a mask for the black regions
-    cv::Mat mask2;
-    cv::threshold(result, mask2, 1, 255, cv::THRESH_BINARY);
-
-    // Create an output image
-    cv::Mat segmentationNoField;
-
-    // Copy the regions from the original image to the output image
-    input_image_.copyTo(segmentationNoField, mask2);
-
-    displayMat(segmentationNoField , "test segmentation no filed");
-
-    Mat partial_result_col_suppression = colorSuppression(segmentationNoField,5);
-
-    displayMat(partial_result_col_suppression, "partial res col supp");
-*/
-
-    // ---------------------- Grabcut ----------------------------------
-
-    // Apply color quantization
-    cv::Mat quantizedImage;
-    cv::cvtColor(input_clone, quantizedImage, cv::COLOR_BGR2Lab); // Convert to Lab color space
-    quantizedImage.convertTo(quantizedImage, CV_32F); // Convert to float for k-means
-    int K = 3; // Number of clusters (adjust as needed)
-    cv::Mat reshapedImage = quantizedImage.reshape(1, quantizedImage.rows * quantizedImage.cols);
-
-    // Perform k-means clustering
-    cv::Mat labels, centers;
-    cv::kmeans(reshapedImage, K, labels, cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 100, 0.2), 3, cv::KMEANS_PP_CENTERS, centers);
-
-    // Assign each pixel to the cluster center color
-    cv::Mat clusteredLabImage(quantizedImage.size(), quantizedImage.type());
-    for (int i = 0; i < quantizedImage.rows * quantizedImage.cols; ++i) {
-        int clusterIdx = labels.at<int>(i);
-        cv::Vec3f& color = centers.at<cv::Vec3f>(clusterIdx);
-        clusteredLabImage.at<cv::Vec3f>(i) = color;
-    }
-
-    // Convert the clustered Lab image back to BGR
-    cv::Mat clusteredImage;
-    clusteredLabImage.convertTo(clusteredImage, CV_8U);
-    cv::cvtColor(clusteredImage, clusteredImage, cv::COLOR_Lab2BGR);
-
-    // Define a rectangle around the human figure to initialize GrabCut
-    cv::Rect rectangle(50,50, input_image_.cols-50, input_image_.rows-50);
-
-    // Initialize mask and grabCut parameters
-    cv::Mat mask(input_image_.size(), CV_8UC1, cv::Scalar(cv::GC_BGD));
-    mask(rectangle).setTo(cv::Scalar(cv::GC_PR_FGD));  // Set rectangle region as probable foreground
-
-    cv::Mat bgdModel, fgdModel;
-
-    // Apply GrabCut algorithm with the clustered image
-    cv::grabCut(clusteredImage, mask, rectangle, bgdModel, fgdModel, 1, cv::GC_INIT_WITH_RECT);
-
-    // Modify the mask to consider probable and definite foreground as foreground
-    cv::Mat resultMask = (mask == cv::GC_PR_FGD) | (mask == cv::GC_FGD);
-
-    // Create a binary mask for visualization
-    cv::Mat binaryMask;
-    resultMask.convertTo(binaryMask, CV_8U);
 
     // Create a masked output image
-    cv::Mat outputImage;
-    input_image_.copyTo(outputImage, binaryMask);
+    cv::Mat colored_out;
+    input.copyTo(colored_out, final_out);
 
-    // Display the original and segmented images side by side
-    cv::Mat combinedImage;
-    cv::hconcat(input_image_, outputImage, combinedImage);
+    //TEAM CLASSIFICATION
+    cv::Mat result = colored_out.clone();
+
+    std::vector<std::vector<cv::Point>> contour;
+    cv::findContours(final_out, contour, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    std::vector<double> aver_intensities;
+
+    // average grayscale intensity calculation for each region
+    for (size_t i = 0; i < contour.size(); i++) {
+        cv::Mat playerMask = cv::Mat::zeros(final_out.size(), CV_8UC1);
+        cv::drawContours(playerMask, contour, i, cv::Scalar(255), cv::FILLED);
+        double averageIntensity = calculateaver_intensity(colored_out, playerMask);
+        aver_intensities.push_back(averageIntensity);
+    }
+
+    // dynamic threshold calculation
+    double dynamic_thr = 0.0;
+    for (double intensity : aver_intensities) {
+        dynamic_thr += intensity;
+    }
+    dynamic_thr /= aver_intensities.size();
 
 
-    return combinedImage;
+    for (size_t i = 0; i < contour.size(); i++) {
+        cv::Mat player_mask = cv::Mat::zeros(foreground_mask.size(), CV_8UC1);
+        cv::drawContours(player_mask, contour, i, cv::Scalar(255), cv::FILLED);
+        double aver_intensity = calculateaver_intensity(colored_out, player_mask);
+
+        if (aver_intensity > dynamic_thr) {
+
+            cv::drawContours(result, contour, i, cv::Scalar(0, 0, 255), -1); // first team's color
+        }
+        else {
+            cv::drawContours(result, contour, i, cv::Scalar(255, 0, 0), -1); // second teams color
+        }
+    }
+
+    field_segmentation_ = result;
+    
+    return field_segmentation_;
+
 }

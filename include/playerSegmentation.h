@@ -16,9 +16,10 @@ class playerSegmentation{
     private:
         cv::Mat input_image_;
         cv::Mat field_segmentation_;
+        double calculateaver_intensity(const cv::Mat& image, const cv::Mat& mask);
 
     public:
-        playerSegmentation(const cv::Mat & input_image, const cv::Mat & fieldSegmentation);
+        playerSegmentation(const cv::Mat & input_image);
         cv::Mat startprocess();
 
 };

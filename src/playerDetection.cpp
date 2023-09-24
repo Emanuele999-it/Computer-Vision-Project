@@ -20,15 +20,11 @@ void playerDetection::startprocess(){
 
     cv::HOGDescriptor hog;
 
+    // Load model
     hog.load("../model/model.yml");
 
     Mat img_gray;
     cvtColor(blurred, img_gray, cv::COLOR_BGR2GRAY);
-
-    // Apply local contrast enhancement to the grayscale image using CLAHE
-    //cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
-    //clahe->setClipLimit(20);
-    //clahe->apply(img_gray, img_gray);
 
     int exp = 6;
     int winSizeX = pow(2, exp);
@@ -36,32 +32,32 @@ void playerDetection::startprocess(){
 
     std::vector<cv::Rect> all_rects;
 
-    // Ensure that winSizeX and winSizeY are multiples of blockStride
-    if (winSizeX <= img_gray.cols && winSizeY <= img_gray.rows) {
-        hog.winSize = cv::Size(winSizeX, winSizeY);
-        std::vector<cv::Rect> rects;
-        std::vector<double> weights;
+    hog.winSize = cv::Size(winSizeX, winSizeY);
+    std::vector<cv::Rect> rects;
+    std::vector<double> weights;
 
+    // Scaling + detectionMultiscaling
+    for (float scale = 1; scale >= 0.8; scale -= 0.06)
+    {
 
-        for (float scale = 1; scale >= 0.8; scale -= 0.06){
+        cv::Mat resized_img;
+        cv::resize(img_gray, resized_img, cv::Size(), scale, scale);
 
-            cv::Mat resized_img;
-            cv::resize(img_gray, resized_img, cv::Size(), scale, scale);
+        hog.detectMultiScale(resized_img, rects, weights, 0, cv::Size(8, 8), cv::Size(30, 30), 1.03, 3, false);
 
-            hog.detectMultiScale(resized_img, rects, weights, 0, cv::Size(8, 8), cv::Size(30,30), 1.03, 3, false);
+        for (cv::Rect element : rects)
+        {
+            // Adjust the rectangles to the original image size
+            element.x /= scale;
+            element.y /= scale;
+            element.width /= scale;
+            element.height /= scale;
 
-            for(cv::Rect element : rects){
-                // Adjust the rectangles to the original image size
-                element.x /= scale;
-                element.y /= scale;
-                element.width /= scale;
-                element.height /= scale;
-
-                all_rects.push_back(element);
-            }
+            all_rects.push_back(element);
         }
     }
 
+    // Remove similar rectangles
     groupRectangles(all_rects, 2, 0.4);
 
     std::vector<int> teams = getPlayerTeam(input_clone, &all_rects);

@@ -5,6 +5,7 @@ const std::vector<int> getPlayerTeam(const cv::Mat &img, const std::vector<cv::R
     std::vector<cv::Mat> subImages;
     std::vector<int> teams;
 
+    // Step 1: Extract sub-images outlined by rectangles
     for (const cv::Rect& rect : *rectangles) {
         // Extract the sub-image using a region of interest (ROI)
         cv::Mat subImage = img(rect);

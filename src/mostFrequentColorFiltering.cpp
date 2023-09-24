@@ -59,7 +59,6 @@ cv::Mat mostFrequentColorFiltering(const cv::Mat & img, const cv::Mat & blurred)
             }
             /*
             else{
-                // giocare con variazione colori per ottenere risultati buoni per immagine 2 e 8 
                 double pixel_difference = cv::norm(pixel_blurred, pixel_img);
                 if (pixel_difference <= tolerance){
                         output.at<cv::Vec3b>(i,j) = desiredColor;

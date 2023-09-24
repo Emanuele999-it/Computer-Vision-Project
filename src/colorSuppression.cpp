@@ -1,6 +1,6 @@
 #include "colorSuppression.h"
 
-// allow to reduce the number of colors
+// Allow to reduce the number of colors
 const cv::Mat colorSuppression(const cv::Mat & img, int k){ // k = number of color quantization
     
     cv::Mat reshaped_image = img.reshape(1, img.rows * img.cols); 
